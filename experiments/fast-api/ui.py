@@ -34,3 +34,23 @@ if st.button("Send GET"):
             st.error(f"Error {res.status_code}: {res.json().get('detail', res.text)}")
     else:
         st.warning("Enter a key first.")
+
+st.divider()
+
+# ── GET: Search Experiments ───────────────────────────────────────
+st.header("GET /search_experiments")
+view_type_label = st.selectbox("View type", options=["ACTIVE_ONLY", "DELETED_ONLY", "ALL"], key="view_type")
+max_results = st.number_input("Max results", min_value=1, value=5, step=1, key="max_results")
+if st.button("Search experiments"):
+    params = {"view_type": view_type_label, "max_results": int(max_results)}
+    res = requests.get(f"{API_BASE}/search_experiments", params=params)
+    if res.ok:
+        experiments = res.json() # list of dicts parse from res.content
+        if experiments:
+            st.success(f"Found {len(experiments)} experiment(s)")
+            # experiments = [exp.pop("tags", None) for exp in experiments]
+            st.dataframe(experiments)
+        else:
+            st.info("No experiments found.")
+    else:
+        st.error(f"Error {res.status_code}: {res.text}")
