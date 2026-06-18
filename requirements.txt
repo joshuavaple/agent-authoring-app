@@ -1,4 +1,6 @@
-streamlit
-pyyaml
-fastapi
-uvicorn
+streamlit==1.58
+pyyaml==6.0.3
+fastapi==0.137.1
+mlflow[databricks]==3.14.0
+openai==2.43.0
+python-dotenv
