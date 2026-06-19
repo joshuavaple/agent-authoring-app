@@ -4,6 +4,9 @@ import json
 import os
 import uuid
 from datetime import datetime
+import httpx
+from httpx_sse import aconnect_sse
+
 
 HISTORY_DIR = "chat_logs"
 SERVER_URL = "http://localhost:8000/chat"
@@ -21,25 +24,8 @@ def save_history(session_id: str, history: list[dict]):
         json.dump(history, f, indent=2, ensure_ascii=False)
     print(f"\nHistory saved to {path}")
 
-def parse_sse_blocks(raw_lines: str):
-    """
-    Group raw SSE lines into (event, data) blocks.
-    """
-    event = None
-    data_line = None
-    for line in raw_lines:
-        if line.startswith("event: "):
-            event = line[len("event: "):]
-        if line.startswith("data: "):
-            data_line = line[len("data: "):]
-        elif line == "":
-            # blank line = end of one SSE block
-            if event is not None and data_line is not None:
-                yield event, data_line
-            event, data_line = None, None
-        # ignoring any other line for now
 
-async def stream_chat(history: list[dict]) -> str:
+async def stream_chat_manual(history: list[dict]) -> str:
     """
     POST history to the server, print tokens as they arrive, return the
     full assistant response. Raises RuntimeError if the server reports
@@ -75,6 +61,43 @@ async def stream_chat(history: list[dict]) -> str:
                     event, data_line = None, None
 
     return "".join(full_response)
+
+async def stream_chat(history: list[dict]) -> str:
+    """
+    POST history to the server for short-term memory
+    Print tokens as they arrive
+    Raises RuntimeError if the server reports an upstream error mid-stream.
+
+    Args:
+        history: a list of message dictionaries {"role": role, "content": content}, which follow OpenAI message format.
+    
+    Returns:
+        The full assistant response (str)
+
+    """
+    full_response = []
+    async with httpx.AsyncClient(timeout=60.0) as http_client:
+        async with aconnect_sse(
+            client=http_client,
+            method="POST",
+            url=SERVER_URL,
+            json={"messages": history}
+        ) as event_source:
+            # sse object handles the sse string blocks and their delimiter:
+            async for sse in event_source.aiter_sse(): 
+                if sse.event == "token":                # same contract-level logic
+                    payload = sse.json()                # .json() parses sse.data for you
+                    token = payload["token"]
+                    print(token, end="", flush=True)
+                    full_response.append(token)
+                elif sse.event == "done":               # same contract-level logic
+                    break
+                elif sse.event == "error":              # same contract-level logic
+                    message = sse.json().get("message", "unknown server error")
+                    raise RuntimeError(f"Server error mid-stream: {message}")
+
+    return "".join(full_response)
+
 
 async def main():
     session_id = make_session_id()
