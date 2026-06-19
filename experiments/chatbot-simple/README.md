@@ -5,6 +5,7 @@
 ## Setup
 - In the repo root folder, use the sample.env template to create a new .env file and store your API key.
 - For simplicity, other configs for the client class is hard-coded in the `chatbot.py` main program.
+- Install and activate the conda environment in the `environment.yml` file: `conda env create -f environment.yml` -> `conda activate a3`
 
 ## Running the chatbot
 - cd to the `chatbot-simple/` folder

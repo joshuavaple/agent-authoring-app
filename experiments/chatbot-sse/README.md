@@ -13,6 +13,11 @@ Architecture
     - Logs each session chat history to a local folder upon exit.
     - Uses httpx-sse to handle SSE events reliably.
 
+## Setup
+- In the repo root folder, use the sample.env template to create a new .env file and store your API key.
+- For simplicity, other configs for the client class is hard-coded in the server codes.
+- Install and activate the conda environment in the `environment.yml` file: `conda env create -f environment.yml` -> `conda activate a3`
+
 ## Startup
 - cd to the chatbot/ folder
 - In a terminal, start the SSE server by running `uvicorn server:app --reload`
