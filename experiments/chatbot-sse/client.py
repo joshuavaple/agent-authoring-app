@@ -11,6 +11,7 @@ from httpx_sse import aconnect_sse
 HISTORY_DIR = "chat_logs"
 SERVER_URL = "http://localhost:8000/chat"
 MAX_TOKENS = 2000
+SYSTEM_PROMPT = "You are a witty, helpful assistant. Keep your answer brief, preferably less than 3 sentences, unless asked for details."
 
 def make_session_id() -> str:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -102,7 +103,7 @@ async def stream_chat(history: list[dict]) -> str:
 async def main():
     session_id = make_session_id()
     history = [
-        {"role": "system", "content": "You are a witty, helpful assistant. Keep your answer brief, preferably less than 3 sentences, unless asked for details."}
+        {"role": "system", "content": SYSTEM_PROMPT}
     ]
     print(f"Chat with the model (each response is capped at ~{int(MAX_TOKENS * 0.75)} words). Ctrl+C or 'quit' to exit.\n")
 
