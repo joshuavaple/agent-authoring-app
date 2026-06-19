@@ -6,17 +6,18 @@ import asyncio
 import os
 import json
 import uuid
+from pathlib import Path
 from datetime import datetime
 from openai import AsyncAzureOpenAI
 from dotenv import load_dotenv
 
 
-load_dotenv()
+load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 MAX_TOKENS = 2000
 HISTORY_DIR = "chat_logs"
-deployment_name = "gpt-4o"
-endpoint = "https://local-rag-resource.services.ai.azure.com/"
+deployment_name = "gpt-4o" # make sure you have this deployment in your MS Foundry.
+endpoint = "https://local-rag-resource.services.ai.azure.com/" #Use your own MS Foundry endpoint name.
 
 def make_session_id() -> str:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
