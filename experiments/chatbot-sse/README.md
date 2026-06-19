@@ -5,11 +5,12 @@ Architecture
     - FastAPI implementation of SSE protocol to enable long-running HTTP connection and continuous streaming to the user from the server. 
     - This is a BFF with 2 purposes: an SSE client to the LLM service (MS Foundry) and an SSE server to the downstream client — it proxies the token stream through while managing state on both sides of the request.
     - The SSE contract is stored in the `SSE-CONTRACT.md` file for client reference.
+    - To end the server, use Ctrl+C
 
 - The `client.py`: 
     - A simple terminal program
     - Manages chat messages short-term memory
-    - Logs each session chat history to a local folder.
+    - Logs each session chat history to a local folder upon exit.
     - Uses httpx-sse to handle SSE events reliably.
 
 ## Startup
@@ -18,3 +19,4 @@ Architecture
 - In another terminal, start the terminal client by running `python client.py`
 - Start chatting with your bot!
 - You can have concurrent client sessions chatting with the same server to test the server async process.
+- To end a client, use Ctrl+C or type "exit" or "quit".
