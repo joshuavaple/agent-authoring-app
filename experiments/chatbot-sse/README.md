@@ -5,7 +5,7 @@ Architecture
     - FastAPI implementation of SSE protocol to enable long-running HTTP connection and continuous streaming to the user from the server. 
     - This is a BFF with 2 purposes: an SSE client to the LLM service (MS Foundry) and an SSE server to the downstream client — it proxies the token stream through while managing state on both sides of the request.
     - The SSE contract is stored in the `SSE-CONTRACT.md` file for client reference.
-    
+
 - The `client.py`: 
     - A simple terminal program
     - Manages chat messages short-term memory
@@ -15,4 +15,6 @@ Architecture
 ## Startup
 - cd to the chatbot/ folder
 - In a terminal, start the SSE server by running `uvicorn server:app --reload`
-- In another terminal, start the terminal client by running `python client.py`. You can start as many clients as you want.
+- In another terminal, start the terminal client by running `python client.py`
+- Start chatting with your bot!
+- You can have concurrent client sessions chatting with the same server to test the server async process.
