@@ -118,3 +118,38 @@ async def chat(chat_request: ChatRequest, request: Request):
             "X-Accel-Buffering": "no",   # disables nginx buffering if behind a proxy
         }
     )
+
+# ---------------------------------------------------------------------------
+# Helper endpoint to generate chat session summary
+# ---------------------------------------------------------------------------
+ 
+class TitleRequest(BaseModel):
+    messages: list[dict]
+ 
+ 
+@app.post("/title")
+async def title(title_request: TitleRequest):
+    """
+    One-shot, non-streaming completion that summarizes a conversation
+    into a short session title. Deliberately separate from /chat:
+    titling doesn't need token-by-token delivery, so SSE framing would
+    just be overhead here — a plain JSON response is the right shape.
+    """
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Summarize this conversation in 3-10 words as a short title. "
+                "Respond with only the title text — no punctuation, no quotes, no preamble."
+            ),
+        }
+    ] + [m for m in title_request.messages if m["role"] in ("user", "assistant")]
+ 
+    response = await client.chat.completions.create(
+        model=deployment_name,
+        messages=messages,
+        max_tokens=20,
+        stream=False,
+    )
+    title_text = response.choices[0].message.content.strip()
+    return {"title": title_text}

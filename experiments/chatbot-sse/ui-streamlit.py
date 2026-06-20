@@ -9,6 +9,7 @@ from httpx_sse import connect_sse
 
 HISTORY_DIR = "chat_logs"
 SERVER_URL = "http://localhost:8000/chat"
+TITLE_URL = "http://localhost:8000/title"
 SYSTEM_PROMPT = "You are a witty, helpful assistant. Keep your answer brief, preferably less than 3 sentences, unless asked for details."
 
 
@@ -18,29 +19,50 @@ def make_session_id() -> str:
     return f"{timestamp}-{suffix}"
 
 
-def save_history(session_id: str, history: list[dict]):
+def save_history(session_id: str, metadata: dict, history: list[dict]):
     os.makedirs(HISTORY_DIR, exist_ok=True)
     path = os.path.join(HISTORY_DIR, f"{session_id}.json")
+    payload = {"metadata": metadata, "messages": history}
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=2, ensure_ascii=False)
+        json.dump(payload, f, indent=2, ensure_ascii=False)
 
 
-def load_history(session_id: str) -> list[dict]:
+def load_history(session_id: str) -> tuple[dict, list[dict]]:
     path = os.path.join(HISTORY_DIR, f"{session_id}.json")
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    if isinstance(data, list):
+        # Legacy shape: file IS the message list, no metadata wrapper yet.
+        return {"title": None}, data
+    return data.get("metadata", {"title": None}), data.get("messages", [])
+
+
+def generate_title(history: list[dict]) -> str:
+    """Calls the server's /title endpoint to summarize the conversation so far."""
+    convo = [m for m in history if m["role"] != "system"]
+    response = httpx.post(TITLE_URL, json={"messages": convo}, timeout=30.0)
+    response.raise_for_status()
+    return response.json()["title"]
 
 
 @st.cache_data
 def _title_from_file(path: str, mtime: float) -> str:
     """
     mtime is part of the cache key purely to invalidate when the file
-    changes — the title itself is derived from the first user message,
-    which never changes once written, so this stays cheap in practice.
+    changes. Prefers an LLM-generated metadata.title; falls back to a
+    truncated first-user-message heuristic for legacy files or sessions
+    where titling hasn't run yet (e.g. the failed-mid-stream case).
     """
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    for msg in data:
+    if isinstance(data, list):
+        messages, title = data, None
+    else:
+        messages = data.get("messages", [])
+        title = data.get("metadata", {}).get("title")
+    if title:
+        return title
+    for msg in messages:
         if msg["role"] == "user":
             text = msg["content"].strip().replace("\n", " ")
             return text[:40] + ("…" if len(text) > 40 else "")
@@ -92,6 +114,8 @@ if "session_id" not in st.session_state:
     st.session_state.session_id = make_session_id()
 if "history" not in st.session_state:
     st.session_state.history = [{"role": "system", "content": SYSTEM_PROMPT}]
+if "metadata" not in st.session_state:
+    st.session_state.metadata = {"title": None}
 
 st.set_page_config(page_title="GPT-4o Chat", page_icon="💬")
 
@@ -100,6 +124,7 @@ with st.sidebar:
     if st.button("➕ New chat", use_container_width=True):
         st.session_state.session_id = make_session_id()
         st.session_state.history = [{"role": "system", "content": SYSTEM_PROMPT}]
+        st.session_state.metadata = {"title": None}
         st.rerun()
 
     st.divider()
@@ -112,7 +137,7 @@ with st.sidebar:
             type="primary" if is_active else "secondary",
         ):
             st.session_state.session_id = session_id
-            st.session_state.history = load_history(session_id)
+            st.session_state.metadata, st.session_state.history = load_history(session_id)
             st.rerun()
 
 st.title("💬 Chat")
@@ -142,4 +167,13 @@ if user_input:
 
     if full_response is not None:
         st.session_state.history.append({"role": "assistant", "content": full_response})
-        save_history(st.session_state.session_id, st.session_state.history)
+
+        # First full exchange = system + user + assistant = 3 messages.
+        # Title is generated exactly once and never re-evaluated after.
+        if st.session_state.metadata.get("title") is None and len(st.session_state.history) == 3:
+            try:
+                st.session_state.metadata["title"] = generate_title(st.session_state.history)
+            except (httpx.HTTPError, KeyError):
+                pass  # sidebar falls back to the truncated-first-message heuristic
+
+        save_history(st.session_state.session_id, st.session_state.metadata, st.session_state.history)
