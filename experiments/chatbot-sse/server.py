@@ -27,6 +27,19 @@ app = FastAPI()
 # LLM: streaming client (OpenAI/Anthropic SDK etc)
 # ---------------------------------------------------------------------------
 async def llm_stream(messages: list[dict]):
+    """Stream tokens from the LLM API.
+
+    Makes an asynchronous request to the Azure OpenAI API and yields
+    individual tokens as they arrive from the stream. Filters out empty
+    tokens and handles malformed chunks gracefully.
+
+    Args:
+        messages: A list of message dictionaries with 'role' and 'content' keys,
+            representing the conversation history to send to the LLM.
+
+    Yields:
+        str: Individual tokens from the LLM response.
+    """
     stream = await client.chat.completions.create(
         model=deployment_name,
         messages=messages,
@@ -82,15 +95,20 @@ def sse_event(data: dict, event: str | None = None) -> str:
 async def event_stream(messages: list[dict], request: Request):
     """
     Reformat the LLM token stream into SSE-formatted bytes.
-    Detects the connection status and stops streaming once it's closed.
+
+    This generator yields Server-Sent Events for each token produced by the
+    language model and emits a final done event when streaming completes.
+    It also checks whether the client connection is still alive and stops
+    streaming if the request is disconnected.
 
     Args:
-        prompt: The user's input. Passed through to the LLM call.
-        request: The live ASGI Request for this connection. Carries no
-            data we need — it exists so we can poll
-            `request.is_disconnected()` each iteration and check whether
-            the client (browser tab, curl, etc.) is still on the other
-            end of the socket.
+        messages (list[dict]): Conversation history with 'role' and 'content'
+            keys to send to the LLM.
+        request (Request): ASGI request object used to detect client
+            disconnection.
+
+    Yields:
+        str: SSE-formatted event blocks.
     """
     try:
         async for token in llm_stream(messages):
