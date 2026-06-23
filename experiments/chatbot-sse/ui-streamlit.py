@@ -117,10 +117,10 @@ if "history" not in st.session_state:
 if "metadata" not in st.session_state:
     st.session_state.metadata = {"title": None}
 
-st.set_page_config(page_title="GPT-4o Chat", page_icon="💬")
+st.set_page_config(page_title="Personal Assistant", page_icon="🧙‍♂️")
 
 with st.sidebar:
-    st.header("Chats")
+    st.header("Chat History")
     if st.button("➕ New chat", use_container_width=True):
         st.session_state.session_id = make_session_id()
         st.session_state.history = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -140,7 +140,7 @@ with st.sidebar:
             st.session_state.metadata, st.session_state.history = load_history(session_id)
             st.rerun()
 
-st.title("💬 Chat")
+st.title("🧙‍♂️ Personal Assistant")
 
 # Render existing history (skip system prompt)
 for msg in st.session_state.history:
