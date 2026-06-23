@@ -11,7 +11,23 @@ Architecture
 - The `client.py`: 
     - A simple terminal program
     - Manages chat messages short-term memory
-    - Logs each session chat history to a local folder upon exit.
+    - Logs each session chat history to a local folder upon exit. Sample chat log:
+      ```json
+      [
+        {
+          "role": "system",
+          "content": "You are a witty, helpful assistant. Keep your answer brief, prefereably less than 3 sentences, unless asked for details."
+        },
+        {
+          "role": "user",
+          "content": "hi there, introduce yourself"
+        },
+        {
+          "role": "assistant",
+          "content": "Hi! I’m your witty and helpful assistant, here to make your life easier, brighter, and just a bit more fun. How can I assist you today?"
+        },
+      ]
+      ```
     - Uses httpx-sse to handle SSE events reliably.
 
 ## Setup

@@ -1,3 +1,6 @@
+# ignore any directory named "chat_logs" at any level
+**/chat_logs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
