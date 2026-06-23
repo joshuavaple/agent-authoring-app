@@ -3,6 +3,7 @@
 Architecture
 - The `server.py`: 
     - async generator wrapper around the `openai.AsyncAzureOpenAI` client class to stream only the assistant's text tokens to the user.
+    - Authentication and authorization: via OAuth2 with EntraID (current method, see Setup), or simple API key
     - FastAPI implementation of SSE protocol to enable long-running HTTP connection and continuous streaming to the user from the server. 
     - This is a BFF with 2 purposes: an SSE client to the LLM service (MS Foundry) and an SSE server to the downstream client — it proxies the token stream through while managing state on both sides of the request.
     - The SSE contract is stored in the `SSE-CONTRACT.md` file for client reference.
@@ -34,6 +35,15 @@ Architecture
 - In the repo root folder, use the sample.env template to create a new .env file and store your API key.
 - For simplicity, other configs for the client class is hard-coded in the server codes.
 - Install and activate the conda environment in the `environment.yml` file: `conda env create -f environment.yml` -> `conda activate a3`
+
+- MS Foundry access via Entra ID (OAuth 2)
+  - Step 1: App registration (one-time, in Azure portal): 
+    - Azure Portal → Entra ID → App registrations → New registration. 
+    - Note down Tenant ID and Application (Client) ID. 
+    - Then in Certificates & secrets, create a new client secret with expiry date, and note it down
+  - Step 2: grant RBAC for the app above
+    - open the MS Foundry resource of interest
+    - Access Control (IAM) → Check access tab / Grant access to this resource / Add role assignment → choose "Cognitive Services User" and click Next → Assign access to / User, group, or service principal / + Select members → search for your app name and click Select → Review and assign.
 
 ## Startup
 - cd to the `chatbot-sse/` folder
