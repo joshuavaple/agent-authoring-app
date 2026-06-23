@@ -7,18 +7,41 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from pathlib import Path
 from dotenv import load_dotenv
+from azure.identity import ClientSecretCredential, get_bearer_token_provider
 
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 MAX_TOKENS = 2000
-deployment_name = "gpt-4o"
-endpoint = "https://local-rag-resource.services.ai.azure.com/"
+DEPLOYMENT_NAME = "gpt-4o"
+API_VERSION = "2024-02-01"
 
+# ---------------------------------------------------------------------------
+# MS Foundry Authentication
+# ---------------------------------------------------------------------------
+credential = ClientSecretCredential(
+    tenant_id=os.environ.get("AZURE_TENANT_ID"),
+    client_id=os.environ.get("AZURE_CLIENT_ID"),
+    client_secret=os.environ.get("AZURE_CLIENT_SECRET"),
+)
+
+# the function below is sync in nature - ok for small app
+token_provider = get_bearer_token_provider(
+    credential, "https://cognitiveservices.azure.com/.default"
+)
+
+# Use Foundry API key
+# client = AsyncAzureOpenAI(
+#     azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
+#     api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
+#     api_version=API_VERSION
+# )
+
+# Use OAuth2 with EntraID:
 client = AsyncAzureOpenAI(
-    azure_endpoint=endpoint,
-    api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
-    api_version="2024-02-01"
+    azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
+    azure_ad_token_provider=token_provider,
+    api_version=API_VERSION,
 )
 
 app = FastAPI()
@@ -41,7 +64,7 @@ async def llm_stream(messages: list[dict]):
         str: Individual tokens from the LLM response.
     """
     stream = await client.chat.completions.create(
-        model=deployment_name,
+        model=DEPLOYMENT_NAME,
         messages=messages,
         max_tokens=MAX_TOKENS,
         stream=True
@@ -164,7 +187,7 @@ async def title(title_request: TitleRequest):
     ] + [m for m in title_request.messages if m["role"] in ("user", "assistant")]
  
     response = await client.chat.completions.create(
-        model=deployment_name,
+        model=DEPLOYMENT_NAME,
         messages=messages,
         max_tokens=20,
         stream=False,
