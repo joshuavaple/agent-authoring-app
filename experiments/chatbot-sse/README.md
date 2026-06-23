@@ -31,8 +31,36 @@ Architecture
       ```
     - Uses httpx-sse to handle SSE events reliably.
 
+- The `ui-streamlit.py`:
+  - A Streamlit UI that does all that the terminal client does, plus some additional features:
+    - Chat history side bar
+    - AI-summarized chat history after a few turns
+  - The chat history has an additional metadata field for the summary
+    ```json
+    {
+      "metadata": {
+        "title": "Blade Runner timeline and plot summary"
+      },
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a witty, helpful assistant. Keep your answer brief, preferably less than 3 sentences, unless asked for details."
+        },
+        {
+          "role": "user",
+          "content": "hey there, tell me more about the timeline and plots of the Blade Runner movies"
+        },
+        {
+          "role": "assistant",
+          "content": "Sure! The *Blade Runner* series explores themes of humanity, identity, and artificial life across two main films:\n\n1. **Blade Runner (1982)**: Set in dystopian Los Angeles in 2019, Rick Deckard (Harrison Ford), a \"blade runner,\" hunts rogue bioengineered beings called replicants while questioning his own humanity. The main plot revolves around Deckard pursuing four escaped replicants led by Roy Batty.\n\n2. **Blade Runner 2049 (2017)**: Set 30 years later, K (Ryan Gosling), a replicant blade runner, uncovers a buried secret suggesting replicants can reproduce biologically. This discovery leads him to track down Deckard for answers, unraveling deeper conspiracies about identity and control.\n\nInterested in exploring hidden themes or production details?"
+        }
+      ]
+    }
+
+    ```
+
 ## Setup
-- In the repo root folder, use the sample.env template to create a new .env file and store your API key.
+- In the repo root folder, use the sample.env template to create a new .env file and store your endpoint, API key or other fields for OAuth2 access via entra ID.
 - For simplicity, other configs for the client class is hard-coded in the server codes.
 - Install and activate the conda environment in the `environment.yml` file: `conda env create -f environment.yml` -> `conda activate a3`
 
@@ -47,11 +75,12 @@ Architecture
 
 ## Startup
 - cd to the `chatbot-sse/` folder
-- In a terminal, start the SSE server by running `uvicorn server:app --reload`
-- In another terminal, start the terminal client by running `python client.py`
+- In a terminal, start the SSE server by running `uvicorn server:app`
+- For a terminal chatbot: start another terminal and run `python client.py`
+- For a Streamlit chatbot: start another terminal and run `streamlit run ui-streamlit.pu`
 - Start chatting with your bot!
 - You can have concurrent client sessions chatting with the same server to test the server async process.
-- To end a client, use Ctrl+C or type "exit" or "quit".
+- To end a terminal client, use Ctrl+C or type "exit" or "quit", use Ctrl+C for the Streamlit client.
 
 -----
 # B. PROJECT EXPLAINER
