@@ -102,8 +102,9 @@ Two processes, one Azure OpenAI deployment:
   streams tokens back over SSE.
 - `client.py` — a terminal script (`python client.py`), owns the conversation history,
   renders tokens as they arrive, saves each session to a JSON file on exit.
+- `ui-streamlit.py` — a Streamlit app, with extended features like session history and session summary.
 
-Multiple `client.py` processes can talk to one `server.py` concurrently — used during
+Multiple client processes can talk to one `server.py` concurrently — used during
 development to sanity-check the server's async handling under concurrent load.
 
 ---
