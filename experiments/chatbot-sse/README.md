@@ -135,7 +135,7 @@ sending the new message appended with previous messages, and clever client-side 
 For simplicity, this server only yield the actual incremental chunks from the LLM to the client 
 and discard other metadata (see `llm_stream()`).
 
-**Client — plain Python script, stateful.** Owns the `history` list, the only place
+**Client — plain Python script or Streamlit App, stateful.** Owns the `history` list, the only place
 conversation state lives between turns. Talks to the server purely over HTTP; has no special
 relationship to it beyond knowing the contract.
 
@@ -199,6 +199,14 @@ Three responsibilities:
   on *every* exit path (normal `quit`, Ctrl+C, or an unhandled error), not just the happy path.
   On a server-reported `error` event, the failed exchange is fully rolled back
   (`history.pop()` removes the orphaned user turn) rather than left half-recorded.
+
+## Streamlit App Design (`ui-streamlit.py`)
+
+- **Client-side state** — the Streamlit app owns the same `history` list as the terminal client, but adds a lightweight session metadata layer for the UI.
+- **SSE consumption** — uses the same server contract as `client.py`, but renders tokens into a chat bubble UI instead of printing to the terminal.
+- **Chat history sidebar** — displays past sessions and allows the user to switch between them, while the current session remains live in the main pane.
+- **AI-generated summaries** — after a few turns, the app sends the accumulated history to a summarization endpoint and stores the returned title/summary in the session metadata.
+- **User experience** — keeps the chat flow conversational, while the UI handles session persistence, history navigation, and summarization without changing the server.
 
 ---
 
