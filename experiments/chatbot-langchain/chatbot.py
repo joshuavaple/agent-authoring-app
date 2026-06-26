@@ -1,11 +1,10 @@
-# A simple chatbot operating in a while loop
-# with short term memory and saving of each session to a file
-# vanilla OpenAI API
+# Langchain's agent chatbot
+# Using Sreaming interface (v2)
 
 import asyncio
 import os
-import json
 import uuid
+import random
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
@@ -13,13 +12,11 @@ from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
 from langchain.agents import create_agent
 from langchain.tools import tool
-import trafilatura
 from langchain.messages import AIMessageChunk, AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
+import contextvars
 
-# load_dotenv(Path(__file__).parent.parent / ".env")
-load_dotenv("../.env")
-HISTORY_DIR = "chat_logs"
+load_dotenv(Path(__file__).parent.parent.parent / ".env")
 MAX_TOKENS = 2000
 DEPLOYMENT_NAME = "gpt-4o"
 API_VERSION = "2024-02-01"
@@ -33,12 +30,20 @@ def make_session_id() -> str:
     return f"{timestamp}-{suffix}"
 
 
-def save_history(session_id: str, history: list[dict]):
-    os.makedirs(HISTORY_DIR, exist_ok=True)
-    path = os.path.join(HISTORY_DIR, f"{session_id}.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(history, f, indent=2, ensure_ascii=False)
-    print(f"\nHistory saved to {path}")
+def generate_weather_conditions() -> tuple[int, int, str]:
+    """Returns (temperature_degC, humidity_pct, condition)."""
+    temperature = random.randint(10, 30)
+    humidity = random.randint(50, 90)
+    condition = random.choice(["cloudy", "sunny", "partially cloudy", "rainy"])
+    return temperature, humidity, condition
+
+
+# def save_history(session_id: str, history: list[dict]):
+#     os.makedirs(HISTORY_DIR, exist_ok=True)
+#     path = os.path.join(HISTORY_DIR, f"{session_id}.json")
+#     with open(path, "w", encoding="utf-8") as f:
+#         json.dump(history, f, indent=2, ensure_ascii=False)
+#     print(f"\nHistory saved to {path}")
 
 
 # ================================================================
@@ -46,7 +51,6 @@ def save_history(session_id: str, history: list[dict]):
 
 # Agent model and harness
 # ================================================================
-# Use Foundry API key
 client = AzureChatOpenAI(
     azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
     api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
@@ -55,62 +59,51 @@ client = AzureChatOpenAI(
 )
 
 
-async def afetch_link_content(url: str) -> str:
+# update the agent and its tools below
+@tool()
+def get_weather(location: str) -> str:
     """
-    Runs trafilatura's blocking fetch+extract in a thread pool,
-    freeing the event loop while the HTTP request is in flight.
+    get weather data at the specified location
     """
-
-    def _blocking():  # uses 1 thread for both fetching and extracting
-        downloaded = trafilatura.fetch_url(url)
-        return trafilatura.extract(
-            downloaded,
-            output_format="markdown",
-            include_links=True,
-            include_tables=True,
-            include_images=False,
-        )
-
-    return await asyncio.to_thread(_blocking)
+    weather_conditions = generate_weather_conditions()
+    weather = f"""
+    Weather in {location}:
+    temperature: {weather_conditions[0]} degC
+    humidity: {weather_conditions[1]}%
+    {weather_conditions[2]}"
+    """
+    return weather
 
 
-@tool("afetch_express_entry_intro_tool")
-async def afetch_express_entry_intro_tool() -> str:
+@tool()
+def generate_itinerary(location: str, days: str, interest: str = "general") -> str:
     """
-    Scrapes the IRCC website for the latest introduction on the Express Entry system.
+    Generate a short n-days tourist itinerary for a given location and user's interest.
     """
-    return await afetch_link_content(
-        url="https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry.html"
+    prompt = (
+        f"Create a concise {days}-day tourist itinerary for {location} with the weather of, the user has {interest} interest. "
+        "For each day list 2-3 activities or attractions with a one-sentence description each."
+        "Keep the total response under 250 words."
     )
-
-
-@tool("afetch_express_entry_documents_tool")
-async def afetch_express_entry_documents_tool() -> str:
-    """
-    Scrapes the IRCC website for the latest list of documents to create a profile Express Entry system.
-    """
-    return await afetch_link_content(
-        url="https://www.canada.ca/en/immigration-refugees-citizenship/services/immigrate-canada/express-entry/documents.html"
-    )
+    ctx = contextvars.Context()
+    response = ctx.run(client.invoke, [{"role": "user", "content": prompt}])
+    return response.content
 
 
 SYSTEM_PROMPT = """
-You are an expert in Canada Express Entry program to assist potential permanent residence applicants.
-Keep your answer to the point without too much information, unless asked. 
-You are equipped with tools. Always use them. Only answer based on the tool results. 
-Do not make up answers if there is no information returned from the tools.
-If you dont know the answer, or the question is not about your expertise, politely decline."""
+You are a tour guide assistant that provides weather update and other useful information about the user's question on the location.
+"Make your advice suitable with the weather condition, or at least advice the user accordingly."
+If you dont know the answer, or the question is not about your expertise, politely decline.
+"""
 
 
-atools = [afetch_express_entry_intro_tool, afetch_express_entry_documents_tool]
+tools = [get_weather, generate_itinerary]
 agent = create_agent(
-    model=client,
-    tools=atools,
-    system_prompt=SYSTEM_PROMPT,
-    checkpointer=InMemorySaver(), # CRUCIAL for short-term memory
+    client, tools=tools, system_prompt=SYSTEM_PROMPT, checkpointer=InMemorySaver()
 )
 
 
+#
 async def llm_stream(user_input: str, thread_id: str):
     config = {"configurable": {"thread_id": thread_id}}
     async for chunk in agent.astream(
@@ -124,9 +117,7 @@ async def llm_stream(user_input: str, thread_id: str):
 
 async def main():
     thread_id = make_session_id()  # use session ID as thread ID for now
-    # history = [
-    #     {"role": "system", "content":"You are a witty, helpful assistant. Keep your answer brief, prefereably less than 3 sentences, unless asked for details."}
-    # ]
+
     print(
         f"Chat with the model (each response is capped at ~{int(MAX_TOKENS * 0.75)} words). Ctrl+C or 'quit' to exit.\n"
     )
@@ -159,28 +150,32 @@ async def main():
                             if block["type"] == "text":
                                 print(block["text"], end="", flush=True)
 
-                            elif block["type"] == "tool_call_chunk":
-                                # stream partial JSON for tool args
-                                print(f"[tool_chunk: {block['args']}]", end="")
+                            # elif block["type"] == "tool_call_chunk":
+                            #     # stream partial JSON for tool args
+                            #     print(f"[tool_chunk: {block['args']}]", end="")
 
                 elif (
                     chunk_type == "updates"
                 ):  # if the chunk is from the node upon completion
                     # Coarse-grained: full state after a node completes
                     for node_name, state_update in chunk["data"].items():
+
+                        # The AI message:
                         if node_name == "model":
                             msg = state_update["messages"][-1]
                             if isinstance(msg, AIMessage) and msg.tool_calls:
                                 print(
                                     f"\n[TOOL CALLS]: {[tc['name'] for tc in msg.tool_calls]}"
                                 )
-
+                                for tc in msg.tool_calls:
+                                    print(f"  - {tc['name']}({tc['args']})")
+                        # The tool message
                         elif node_name == "tools":
                             msg = state_update["messages"][-1]
                             if isinstance(msg, ToolMessage):
                                 # print(f"\n[TOOL RESULT from {msg.name} (truncated)]: {msg.content[:100]} \n...")
                                 print(
-                                    f"\n[TOOL RESULT from {msg.name}]: {msg.content} \n..."
+                                    f"\n[TOOL RESULT from {msg.name}]: {msg.content}\n"
                                 )
 
                         elif node_name == "__interupt__":
@@ -191,7 +186,7 @@ async def main():
             # =====================================================================
 
     except KeyboardInterrupt:
-        print("\n\nInterrupted, saving...")
+        print("\n\nInterrupted, exitting...")
 
     # finally:
     #     # The general principle: cleanup-that-must-always-happen belongs in finally
