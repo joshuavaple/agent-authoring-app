@@ -37,18 +37,6 @@ def generate_weather_conditions() -> tuple[int, int, str]:
     condition = random.choice(["cloudy", "sunny", "partially cloudy", "rainy"])
     return temperature, humidity, condition
 
-
-# def save_history(session_id: str, history: list[dict]):
-#     os.makedirs(HISTORY_DIR, exist_ok=True)
-#     path = os.path.join(HISTORY_DIR, f"{session_id}.json")
-#     with open(path, "w", encoding="utf-8") as f:
-#         json.dump(history, f, indent=2, ensure_ascii=False)
-#     print(f"\nHistory saved to {path}")
-
-
-# ================================================================
-
-
 # Agent model and harness
 # ================================================================
 client = AzureChatOpenAI(
@@ -196,8 +184,7 @@ async def main():
         print("\n\nInterrupted, exitting...")
 
     # finally:
-    #     # The general principle: cleanup-that-must-always-happen belongs in finally
-    #     save_history(session_id, history)
+    # TODO: handle history from server side (not client side) later.
 
 
 if __name__ == "__main__":
