@@ -104,10 +104,20 @@ agent = create_agent(
 
 
 #
-async def llm_stream(user_input: str, thread_id: str):
+# async def llm_stream(user_input: str, thread_id: str):
+#     config = {"configurable": {"thread_id": thread_id}}
+#     async for chunk in agent.astream(
+#         input={"messages": [{"role": "user", "content": user_input}]},
+#         config=config,
+#         stream_mode=["messages", "updates"],
+#         version="v2",
+#     ):
+#         yield chunk
+
+async def llm_stream(messages: list[dict], thread_id: str):
     config = {"configurable": {"thread_id": thread_id}}
     async for chunk in agent.astream(
-        input={"messages": [{"role": "user", "content": user_input}]},
+        input={"messages": messages},
         config=config,
         stream_mode=["messages", "updates"],
         version="v2",
@@ -133,7 +143,8 @@ async def main():
             # =====================================================================
             current_node = None
             print("Assistant: ", end="", flush=True)
-            async for chunk in llm_stream(user_input=user_input, thread_id=thread_id):
+            # async for chunk in llm_stream(user_input=user_input, thread_id=thread_id):
+            async for chunk in llm_stream(messages=[{"role": "user", "content": user_input}], thread_id=thread_id):
                 chunk_type = chunk["type"]
 
                 if chunk_type == "messages":  # if the chunk is from LLLM
@@ -150,10 +161,6 @@ async def main():
                             if block["type"] == "text":
                                 print(block["text"], end="", flush=True)
 
-                            # elif block["type"] == "tool_call_chunk":
-                            #     # stream partial JSON for tool args
-                            #     print(f"[tool_chunk: {block['args']}]", end="")
-
                 elif (
                     chunk_type == "updates"
                 ):  # if the chunk is from the node upon completion
@@ -169,11 +176,11 @@ async def main():
                                 )
                                 for tc in msg.tool_calls:
                                     print(f"  - {tc['name']}({tc['args']})")
+                        
                         # The tool message
                         elif node_name == "tools":
                             msg = state_update["messages"][-1]
                             if isinstance(msg, ToolMessage):
-                                # print(f"\n[TOOL RESULT from {msg.name} (truncated)]: {msg.content[:100]} \n...")
                                 print(
                                     f"\n[TOOL RESULT from {msg.name}]: {msg.content}\n"
                                 )
