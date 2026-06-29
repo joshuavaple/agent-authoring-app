@@ -15,6 +15,13 @@ from langchain.tools import tool
 from langchain.messages import AIMessageChunk, AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 import contextvars
+import mlflow
+from contextlib import contextmanager
+
+
+mlflow.set_tracking_uri("databricks://joshuale-common")
+mlflow.set_experiment("/Shared/chatbot-langchain")
+mlflow.langchain.autolog()
 
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 MAX_TOKENS = 2000
@@ -36,6 +43,16 @@ def generate_weather_conditions() -> tuple[int, int, str]:
     humidity = random.randint(50, 90)
     condition = random.choice(["cloudy", "sunny", "partially cloudy", "rainy"])
     return temperature, humidity, condition
+
+@contextmanager
+def disable_nested_tracing():
+    """Temporarily disable autologging for nested LLM calls within tools"""
+    mlflow.langchain.autolog(disable=True)
+    try:
+        yield
+    finally:
+        mlflow.langchain.autolog()
+        
 
 # Agent model and harness
 # ================================================================
@@ -68,14 +85,17 @@ def generate_itinerary(location: str, days: str, interest: str = "general") -> s
     """
     Generate a short n-days tourist itinerary for a given location and user's interest.
     """
-    prompt = (
-        f"Create a concise {days}-day tourist itinerary for {location} with the weather of, the user has {interest} interest. "
-        "For each day list 2-3 activities or attractions with a one-sentence description each."
-        "Keep the total response under 250 words."
-    )
-    ctx = contextvars.Context()
-    response = ctx.run(client.invoke, [{"role": "user", "content": prompt}])
-    return response.content
+    with disable_nested_tracing():
+        mlflow.langchain.autolog(disable=True)
+        prompt = (
+            f"Create a concise {days}-day tourist itinerary for {location} with the weather of, the user has {interest} interest. "
+            "For each day list 2-3 activities or attractions with a one-sentence description each."
+            "Keep the total response under 250 words."
+        )
+        ctx = contextvars.Context()
+        response = ctx.run(client.invoke, [{"role": "user", "content": prompt}])
+        result = response.content
+    return result
 
 
 SYSTEM_PROMPT = """
