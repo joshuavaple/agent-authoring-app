@@ -74,6 +74,10 @@ The LangChain version adds tools (`get_weather`, `generate_itinerary`) declared 
 
 ---
 
+## MLflow Tracing
+- The server holds the authentication information to the MLflow tracking server - the U2M profile name (or M2M service principal), the experiment name
+- The client sends the thread ID as usual to the server for short-term memory, and this thread ID is being automatically mapped to MLflow's session ID (mlflow.trace.session), which appears in the "Session" column of the MLflow tracing UI.
+
 ## Reference: Langgraph Streaming (v2)
 - To be differentiated from the new Event Streaming
 - The built-in ReAct agent has the default state of `AgentState`. [link](https://reference.langchain.com/python/langchain/agents/middleware/types/AgentState)
