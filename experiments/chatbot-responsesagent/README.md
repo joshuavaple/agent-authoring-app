@@ -9,6 +9,11 @@
 - Session/thread addressing: single `conversation_id` → dual-purpose (MLflow trace session tag + LangGraph `thread_id`)
 - Observability: MLflow (on Dababricks)
 
+## Prerequisite
+- Create an .env file using the sample .env file from the repo root.
+- Populate the .env file with your own account values.
+- Install and activate the conda environment in the `environment.yml` file: `conda env create -f environment.yml` -> `conda activate a3`
+
 ## Start the agent server
 - run `python start_server.py`
 

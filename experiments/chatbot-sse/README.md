@@ -64,14 +64,6 @@ Architecture
 - For simplicity, other configs for the client class is hard-coded in the server codes.
 - Install and activate the conda environment in the `environment.yml` file: `conda env create -f environment.yml` -> `conda activate a3`
 
-- MS Foundry access via Entra ID (OAuth 2)
-  - Step 1: App registration (one-time, in Azure portal): 
-    - Azure Portal → Entra ID → App registrations → New registration. 
-    - Note down Tenant ID and Application (Client) ID. 
-    - Then in Certificates & secrets, create a new client secret with expiry date, and note it down
-  - Step 2: grant RBAC for the app above
-    - open the MS Foundry resource of interest
-    - Access Control (IAM) → Check access tab / Grant access to this resource / Add role assignment → choose "Cognitive Services User" and click Next → Assign access to / User, group, or service principal / + Select members → search for your app name and click Select → Review and assign.
 
 ## Startup
 - cd to the `chatbot-sse/` folder
