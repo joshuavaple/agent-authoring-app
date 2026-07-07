@@ -30,7 +30,7 @@ from typing import AsyncGenerator
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 # Databricks MLflow Connection via U2M Profile
-mlflow.set_tracking_uri(uri=f"databricks://{os.environ.get("DATABRICKS_PROFILE")}")
+mlflow.set_tracking_uri(uri=f"databricks://{os.environ.get("DATABRICKS_CONFIG_PROFILE")}")
 mlflow.set_experiment(experiment_name=os.environ.get("DATABRICKS_EXPERIMENT_NAME"))
 mlflow.langchain.autolog()
 
