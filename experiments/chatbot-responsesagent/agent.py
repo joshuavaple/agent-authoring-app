@@ -27,13 +27,13 @@ from utils import (
 from typing import AsyncGenerator
 
 
-# Databricks MLflow Connection via U2M Profile
-mlflow.set_tracking_uri(uri="databricks://joshuale-common")
-mlflow.set_experiment(experiment_name="/Shared/chatbot-responsesagent")
+load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
+# Databricks MLflow Connection via U2M Profile
+mlflow.set_tracking_uri(uri=f"databricks://{os.environ.get("DATABRICKS_PROFILE")}")
+mlflow.set_experiment(experiment_name=os.environ.get("DATABRICKS_EXPERIMENT_NAME"))
 mlflow.langchain.autolog()
 
-load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 MAX_TOKENS = 2000
 DEPLOYMENT_NAME = "gpt-4o"
