@@ -16,6 +16,7 @@ import operator
 from langchain.messages import SystemMessage, ToolMessage
 from typing import Literal
 from langgraph.graph import StateGraph, START, END
+from langgraph.graph.state import CompiledStateGraph
 from langgraph.checkpoint.memory import InMemorySaver
 
 
@@ -102,7 +103,7 @@ def should_continue(state: MessagesState) -> Literal["tool_node", "__end__"]:
 
 
 # 6. Build and compile the agent
-def init_agent():
+def init_agent() -> CompiledStateGraph:
     # Build workflow
     agent_builder = StateGraph(MessagesState)
 
